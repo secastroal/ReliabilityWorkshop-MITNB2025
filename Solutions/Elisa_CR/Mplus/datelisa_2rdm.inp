@@ -1,0 +1,88 @@
+TITLE: Fit 2RDM to ELISA_CR data
+DATA:
+  FILE = "Mplus/datelisa.dat";
+VARIABLE: 
+NAMES = id n_obs linlif conhap satlif chaman lifide makhap satsit chanot leades
+     impthi; 
+MISSING=.;
+USEVAR = linlif conhap satlif chaman lifide makhap satsit chanot leades
+     impthi;
+CLUSTER = id;
+TINTERVAL = n_obs(1);
+
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+ESTIMATOR = BAYES;
+BITERATIONS = 20000(10000);
+PROCESSORS = 4;
+CHAINS = 4;
+THIN = 5;
+
+MODEL:
+  
+%WITHIN%
+! Within person factor with random loadings
+
+fw BY linlif@1 (&1);
+lam2-lam10 | fw BY conhap satlif chaman lifide makhap satsit chanot leades impthi (&1) ;
+
+! Autoregressive effect on the latent state residual
+ar | fw ON fw&1;
+
+! Random variances of the random measurement error and 
+! the within person factor.
+werr1-werr10 | linlif conhap satlif chaman lifide makhap satsit chanot leades impthi;
+fwvar | fw;
+
+
+%BETWEEN%
+  
+! Between person factor
+fb BY linlif@1;
+fb BY conhap satlif chaman lifide makhap satsit chanot leades impthi (bl2-bl10);
+
+! Between person measurement errors and factor variance.
+! Intercepts and factor mean.
+
+[linlif conhap satlif chaman lifide makhap satsit chanot leades impthi];
+linlif conhap satlif chaman lifide makhap satsit chanot leades impthi (berr1-berr10);
+
+[fb@0];
+fb (fbvar);
+
+! Means of random effects
+[werr1-werr10] (mwe1-mwe10);
+[lam2-lam10] (mwl2-mwl10);
+[ar] (phi);
+[fwvar] (mwvar);
+
+! Variances of random effects
+werr1-werr10 (vwe1-vwe10);
+lam2-lam10 (vwl2-vwl10);
+ar (vphi);
+fwvar (vwvar);
+
+! No covariances among the random effects and the between person factor
+
+MODEL PRIORS:
+! Use similar Priors as in Xiao et al. (2023)
+vwe1-vwe10 ~ U(0.00001,3);
+vwl2-vwl10 ~ U(0.00001,0.5);
+vwvar ~ U(0.00001,3);
+vphi ~ U(0.00001,1);
+
+MODEL CONSTRAINT:
+! Use model constraint to estimate between person reliability. 
+NEW(unexp, explain, brel);
+explain = (1 + bl2 + bl3 + bl4 + bl5 + bl6 + bl6 + bl7 + bl8 + bl9 + bl10)^2 * fbvar;
+unexp = berr1 + berr2 + berr3 + berr4 + berr5 + berr6 + berr7 + berr8 + berr9 + berr10;
+brel = explain/(explain + unexp);
+
+SAVEDATA: BPARAMETERS = datelisa_2rdm_samples.dat;
+FILE is datelisa_2rdm_fscores.dat;
+SAVE = FSCORES (200, 10);
+FACTORS = all;
+
+DATA IMPUTATION: THIN = 10;
+
+OUTPUT: TECH8;

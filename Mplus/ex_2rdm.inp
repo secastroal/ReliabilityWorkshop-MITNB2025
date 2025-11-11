@@ -1,0 +1,87 @@
+TITLE: Example input file 2RDM
+DATA: FILE = "data.dat";
+VARIABLE: 
+NAMES = id time item1 item2 item3 item4 item5 item6 item7 item8 item9 item10; 
+MISSING=.;
+USEVAR = item1 item2 item3 item4 item5 item6 item7 item8 item9 item10;
+CLUSTER = id;
+TINTERVAL = time(1);
+
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+ESTIMATOR = BAYES;
+BITERATIONS = 20000(10000); ! Max and min number of iterations per chain.
+PROCESSORS = 4; ! Number of processors.
+CHAINS = 4; ! Number of chains. 
+THIN = 1; ! Thinning parameter of MCMC. 
+! Increase THIN to reduce autocorrelation of MCMC chains.
+
+MODEL:
+
+%WITHIN%
+
+! Within person factor with random factor loadings. 
+! The factor loading of the first item is fixed at 1 for identification purposes.
+wf BY item1@1 (&1);
+wl2-wl10 | wf BY item2 item3 item4 item5 item6 item7 item8 item9 item10 (&1);
+
+! Random autoregressive effect on the latent within person factor
+ar | wf ON wf&1 ;
+
+! Random variances of the random measurement error and 
+! the within person factor.
+werr1-werr10 | item1 item2 item3 item4 item5 item6 item7 item8 item9 item10;
+wvar | wf;
+
+%BETWEEN%
+
+! Between person factor
+bf BY item1@1;
+bf BY item2 item3 item4 item5 item6 item7 item8 item9 item10 (bl2-bl10);
+
+! Intercepts and between-person factor mean.
+[item1 item2 item3 item4 item5 item6 item7 item8 item9 item10];
+[bf@0]; ! Between-person factor mean fixed at 0.
+
+! Between-person measurement errors and between-person factor variance.
+item1 item2 item3 item4 item5 item6 item7 item8 item9 item10 (berr1-berr10);
+bf (bvar);
+
+! Means of random effects
+[werr1-werr10] (mwe1-mwe10);
+[wl2-wl10] (mwl2-mwl10);
+[ar] (phi);
+[wvar] (mwvar);
+
+! Variances of random effects
+werr1-werr10 (vwe1-vwe10);
+wl2-wl10 (vwl2-vwl10);
+ar (vphi);
+wvar (vwvar);
+
+! No covariances among the random effects and the between-person factor
+
+MODEL PRIORS:
+! Use similar Priors as in Xiao et al. (2023)
+vwe1-vwe10 ~ U(0.00001,3);
+vwl2-vwl10 ~ U(0.00001,0.5);
+vwvar ~ U(0.00001,3);
+vphi ~ U(0.00001,1);
+
+MODEL CONSTRAINT:
+! Use model constraint to estimate between person reliability. 
+ NEW(unexp, explain, brel);
+ explain = (1 + bl2 + bl3 + bl4 + bl5 + bl6 + bl7 + bl8 + bl9 + bl10)^2 * bvar;
+ unexp = berr1 + berr2 + berr3 + berr4 + berr5 + berr6 + berr7 + berr8 + berr9 + berr10;
+ brel = explain/(explain + unexp);
+
+SAVEDATA: BPARAMETERS = 2rdm_samples.dat; ! Save MCMC samples.
+          ! Save plausible values of the factor scores and random effects
+          FILE is 2rdm_fscores.dat; 
+          SAVE = FSCORES (200, 10);
+          FACTORS = all;
+
+DATA IMPUTATION: THIN = 10; ! Thinning for the imputation of the factor scores
+
+OUTPUT: TECH8;
+

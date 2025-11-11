@@ -1,0 +1,125 @@
+TITLE: Fit ME-TSO to ELISA_CR data
+DATA:
+  FILE = "Mplus/datelisa.dat";
+VARIABLE: 
+NAMES = id n_obs linlif conhap satlif chaman lifide makhap satsit chanot leades
+     impthi; 
+MISSING=.;
+USEVAR = linlif conhap satlif chaman lifide makhap satsit chanot leades
+     impthi;
+CLUSTER = id;
+TINTERVAL = n_obs(1);
+
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+ESTIMATOR = BAYES;
+BITERATIONS = 20000(10000);
+PROCESSORS = 4;
+CHAINS = 4;
+THIN = 1;
+
+MODEL:
+
+%WITHIN%
+
+! Latent state residual
+eta BY linlif@1
+conhap (lamb2)
+satlif (lamb3)
+chaman (lamb4)
+lifide (lamb5)
+makhap (lamb6)
+satsit (lamb7)
+chanot (lamb8)
+leades (lamb9)
+impthi (&1 lamb10);
+
+! Random autoregressive effect on the latent state residual
+ar | eta ON eta&1;
+
+! Variances of the random measurement error and 
+! the latent state residual.
+linlif(o_err1) ;
+conhap(o_err2) ;
+satlif(o_err3) ;
+chaman(o_err4) ;
+lifide(o_err5) ;
+makhap(o_err6) ;
+satsit(o_err7) ;
+chanot(o_err8) ;
+leades(o_err9) ;
+impthi(o_err10) ;
+eta(s_var) ;
+
+%BETWEEN%
+
+! Latent trait-indicator variables
+theta1 BY linlif@1 ;
+theta2 BY conhap@1 ;
+theta3 BY satlif@1 ;
+theta4 BY chaman@1 ;
+theta5 BY lifide@1 ;
+theta6 BY makhap@1 ;
+theta7 BY satsit@1 ;
+theta8 BY chanot@1 ;
+theta9 BY leades@1 ;
+theta10 BY impthi@1 ;
+
+! Fix at 0 intercepts and estimate latent trait-indicator means.
+! Estimate random coefficients means
+[linlif@0];
+[conhap@0];
+[satlif@0];
+[chaman@0];
+[lifide@0];
+[makhap@0];
+[satsit@0];
+[chanot@0];
+[leades@0];
+[impthi@0];
+[theta1*];
+[theta2*];
+[theta3*];
+[theta4*];
+[theta5*];
+[theta6*];
+[theta7*];
+[theta8*];
+[theta9*];
+[theta10*];
+[ar];
+
+! Fix at 0 between residual variance. Estimate latent trait-indicator
+! variances and random coefficients variances.
+linlif@0.001;
+conhap@0.001;
+satlif@0.001;
+chaman@0.001;
+lifide@0.001;
+makhap@0.001;
+satsit@0.001;
+chanot@0.001;
+leades@0.001;
+impthi@0.001;
+theta1(t_var1);
+theta2(t_var2);
+theta3(t_var3);
+theta4(t_var4);
+theta5(t_var5);
+theta6(t_var6);
+theta7(t_var7);
+theta8(t_var8);
+theta9(t_var9);
+theta10(t_var10);
+
+! Covariances
+theta1-theta10 WITH theta1-theta10 ar;
+
+SAVEDATA: BPARAMETERS = datelisa_metso_samples.dat;
+          FILE is datelisa_metso_fscores.dat;
+          SAVE = FSCORES (200 10);
+          FACTORS = all;
+
+DATA IMPUTATION: THIN = 10;
+
+OUTPUT: TECH8;

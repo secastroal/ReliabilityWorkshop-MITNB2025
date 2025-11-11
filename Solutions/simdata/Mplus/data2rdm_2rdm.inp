@@ -1,0 +1,85 @@
+TITLE: Fit 2RDM to simulated 2RDM data
+DATA:  FILE = "Mplus/data2rdm.dat";
+VARIABLE: 
+NAMES = id time I1 I2 I3 I4 I5 I6; 
+MISSING=.;
+USEVAR = I1 I2 I3 I4 I5 I6;
+CLUSTER = id;
+TINTERVAL = time(1);
+
+ANALYSIS:
+TYPE = TWOLEVEL RANDOM;
+ESTIMATOR = BAYES;
+BITERATIONS = 20000(10000);
+PROCESSORS = 4;
+CHAINS = 4;
+THIN = 5;
+
+MODEL:
+  
+%WITHIN%
+! Within person factor with random loadings
+
+fw BY I1@1 (&1);
+lam2-lam6 | fw BY I2 I3 I4 I5 I6 (&1) ;
+
+! Autoregressive effect on the latent state residual
+ar | fw ON fw&1;
+
+! Random variances of the random measurement error and 
+! the within person factor.
+werr1-werr6 | I1 I2 I3 I4 I5 I6;
+fwvar | fw;
+
+
+%BETWEEN%
+  
+! Between person factor
+fb BY I1@1;
+fb BY I2 I3 I4 I5 I6 (bl2-bl6);
+
+! Between person measurement errors and factor variance.
+! Intercepts and factor mean.
+
+[I1 I2 I3 I4 I5 I6];
+I1 I2 I3 I4 I5 I6 (berr1-berr6);
+
+[fb@0];
+fb (fbvar);
+
+! Means of random effects
+[werr1-werr6] (mwe1-mwe6);
+[lam2-lam6] (mwl2-mwl6);
+[ar] (phi);
+[fwvar] (mwvar);
+
+! Variances of random effects
+werr1-werr6 (vwe1-vwe6);
+lam2-lam6 (vwl2-vwl6);
+ar (vphi);
+fwvar (vwvar);
+
+! No covariances among the random effects and the between person factor
+
+MODEL PRIORS:
+! Use similar Priors as in Xiao et al. (2023)
+vwe1-vwe6 ~ U(0.00001,3);
+vwl2-vwl6 ~ U(0.00001,0.5);
+vwvar ~ U(0.00001,3);
+vphi ~ U(0.00001,1);
+
+MODEL CONSTRAINT:
+! Use model constraint to estimate between person reliability. 
+NEW(unexp, explain, brel);
+explain = (1 + bl2 + bl3 + bl4 + bl5 + bl6)^2 * fbvar;
+unexp = berr1 + berr2 + berr3 + berr4 + berr5 + berr6;
+brel = explain/(explain + unexp);
+
+SAVEDATA: BPARAMETERS = data2rdm_2rdm_samples.dat;
+FILE is data2rdm_2rdm_fscores.dat;
+SAVE = FSCORES (200, 10);
+FACTORS = all;
+
+DATA IMPUTATION: THIN = 10;
+
+OUTPUT: TECH8;
