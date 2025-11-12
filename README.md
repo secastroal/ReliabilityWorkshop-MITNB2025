@@ -6,8 +6,9 @@
 
 This repository contains all materials for the workshop *Estimating
 internal consistency reliability for intensive longitudinal data: A
-brief tutorial* offered on November 4<sup>th</sup>, 2025, at the MITNB
-meeting, at Tilburg Experience Sampling Center (TESC) in Tilburg, the
+brief tutorial* offered on November 4<sup>th</sup>, 2025, at the
+[MITNB](https://mitnb.org/) meeting, at Tilburg Experience Sampling
+Center ([TESC](https://experiencesampling.nl/)) in Tilburg, the
 Netherlands. The materials include data, example code, solutions, and
 slides to help you learn and apply statistical methods for the
 estimation of the internal consistency reliability of intensive
