@@ -51,5 +51,7 @@ rsconnect/
 # Rproj and practical qmd
 *.qmd
 *.Rproj
+apa7.csl
+references.bib
 
 
