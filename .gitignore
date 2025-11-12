@@ -53,5 +53,6 @@ rsconnect/
 *.Rproj
 apa7.csl
 references.bib
+README.qmd
 
 
